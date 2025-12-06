@@ -1,0 +1,899 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GCash Vendo Machine - Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #0066CC 0%, #004499 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .machine-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 500px;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        .header {
+            background: #0066CC;
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        .logo {
+            background: white;
+            color: #0066CC;
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 48px;
+            font-weight: bold;
+            margin: 20px auto;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .amount-display {
+            background: #f0f0f0;
+            border: 3px solid #0066CC;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .amount-display label {
+            font-size: 16px;
+            color: #666;
+            display: block;
+            margin-bottom: 10px;
+        }
+
+        .amount-display .amount {
+            font-size: 48px;
+            font-weight: bold;
+            color: #0066CC;
+        }
+
+        .input-section {
+            background: #f8f8f8;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .input-section label {
+            display: block;
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 10px;
+        }
+
+        .mobile-input {
+            width: 100%;
+            padding: 15px;
+            font-size: 24px;
+            text-align: center;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+
+        .mobile-input:focus {
+            outline: none;
+            border-color: #0066CC;
+        }
+
+        .numpad {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .numpad button {
+            padding: 20px;
+            font-size: 24px;
+            font-weight: bold;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .numpad button:hover {
+            background: #f0f0f0;
+            border-color: #0066CC;
+        }
+
+        .numpad button:active {
+            transform: scale(0.95);
+        }
+
+        .bill-simulator {
+            background: #fff3cd;
+            border: 2px dashed #ffc107;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .bill-simulator h3 {
+            font-size: 14px;
+            color: #856404;
+            margin-bottom: 10px;
+        }
+
+        .bill-buttons {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+        }
+
+        .bill-btn {
+            padding: 12px;
+            font-size: 16px;
+            font-weight: bold;
+            border: 2px solid #ffc107;
+            border-radius: 6px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+
+.bill-btn:hover {
+            background: #ffc107;
+            color: white;
+        }
+
+        .action-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .btn {
+            padding: 20px;
+            font-size: 18px;
+            font-weight: bold;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-load {
+            background: #00CC66;
+            color: white;
+        }
+
+        .btn-load:hover:not(:disabled) {
+            background: #00b359;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,204,102,0.3);
+        }
+
+        .btn-cancel {
+            background: #CC0000;
+            color: white;
+        }
+
+        .btn-cancel:hover {
+            background: #b30000;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(204,0,0,0.3);
+        }
+
+        .status-bar {
+            background: #0066CC;
+            color: white;
+            padding: 15px;
+            text-align: center;
+            font-size: 14px;
+        }
+
+        .admin-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            font-size: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .admin-btn:hover {
+            background: rgba(255,255,255,0.3);
+            transform: rotate(90deg);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.7);
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            max-width: 400px;
+            width: 90%;
+            text-align: center;
+        }
+
+        .modal-content h2 {
+            color: #0066CC;
+            margin-bottom: 20px;
+        }
+
+        .modal-content p {
+            margin: 10px 0;
+            font-size: 16px;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .modal-buttons button {
+            flex: 1;
+            padding: 15px;
+            font-size: 16px;
+            font-weight: bold;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .admin-panel {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            max-width: 500px;
+            width: 90%;
+        }
+
+        .admin-panel h2 {
+            color: #0066CC;
+            margin-bottom: 20px;
+        }
+
+        .stats {
+            background: #f8f8f8;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .stat-item:last-child {
+            border-bottom: none;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #0066CC;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+
+.success-icon {
+            font-size: 64px;
+            color: #00CC66;
+            margin-bottom: 20px;
+        }
+
+        .error-icon {
+            font-size: 64px;
+            color: #CC0000;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="machine-container">
+        <div class="header">
+            <button class="admin-btn" onclick="openAdmin()">⚙</button>
+            <h1>GCash Loading Station</h1>
+            <div class="logo">G</div>
+        </div>
+
+        <div class="content">
+            <div class="amount-display">
+                <label>Amount Inserted</label>
+                <div class="amount" id="amountDisplay">₱0.00</div>
+            </div>
+
+            <div class="bill-simulator">
+                <h3>💵 DEMO: Click to simulate bill insertion</h3>
+                <div class="bill-buttons">
+                    <button class="bill-btn" onclick="insertBill(20)">₱20</button>
+                    <button class="bill-btn" onclick="insertBill(50)">₱50</button>
+                    <button class="bill-btn" onclick="insertBill(100)">₱100</button>
+                    <button class="bill-btn" onclick="insertBill(200)">₱200</button>
+                    <button class="bill-btn" onclick="insertBill(500)">₱500</button>
+                    <button class="bill-btn" onclick="insertBill(1000)">₱1000</button>
+                </div>
+                <div style="margin-top:10px; display:flex; align-items:center; gap:8px;">
+                     <button id="connectButton" class="bill-btn" onclick="connectToArduino()">🔗 Connect to Arduino</button>
+                     <span id="hwStatus" style="font-size:12px; color:#856404;">Not Connected</span>
+                 </div>
+            </div>
+
+            <div class="input-section">
+                <label>Enter Mobile Number (09XXXXXXXXX)</label>
+                <input type="tel" class="mobile-input" id="mobileInput" maxlength="11" placeholder="09XXXXXXXXX">
+                
+                <div class="numpad">
+                    <button onclick="numpadClick('1')">1</button>
+                    <button onclick="numpadClick('2')">2</button>
+                    <button onclick="numpadClick('3')">3</button>
+                    <button onclick="numpadClick('4')">4</button>
+                    <button onclick="numpadClick('5')">5</button>
+                    <button onclick="numpadClick('6')">6</button>
+                    <button onclick="numpadClick('7')">7</button>
+                    <button onclick="numpadClick('8')">8</button>
+                    <button onclick="numpadClick('9')">9</button>
+                    <button onclick="clearInput()">Clear</button>
+                    <button onclick="numpadClick('0')">0</button>
+                    <button onclick="backspace()">⌫</button>
+                </div>
+            </div>
+
+            <div class="action-buttons">
+                <button class="btn btn-load" id="loadBtn" onclick="processTransaction()" disabled>
+                    LOAD GCASH
+                </button>
+                <button class="btn btn-cancel" onclick="cancelTransaction()">
+                    CANCEL
+                </button>
+            </div>
+        </div>
+
+        <div class="status-bar" id="statusBar">
+            Insert bills to begin | Commission: 3%
+        </div>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div class="modal" id="confirmModal">
+        <div class="modal-content">
+            <h2>Confirm Transaction</h2>
+            <p><strong>Mobile:</strong> <span id="confirmMobile"></span></p>
+            <p><strong>Amount Inserted:</strong> <span id="confirmAmount"></span></p>
+            <p><strong>Commission (3%):</strong> <span id="confirmCommission"></span></p>
+            <p><strong>GCash Load:</strong> <span id="confirmLoad"></span></p>
+            <div class="modal-buttons">
+                <button style="background: #00CC66; color: white;" onclick="confirmTransaction()">CONFIRM</button>
+                <button style="background: #CC0000; color: white;" onclick="closeModal('confirmModal')">CANCEL</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Processing Modal -->
+    <div class="modal" id="processingModal">
+        <div class="modal-content">
+            <div class="loading"></div>
+            <h2>Processing Transaction</h2>
+            <p>Please wait...</p>
+        </div>
+    </div>
+
+
+<!-- Success Modal -->
+    <div class="modal" id="successModal">
+        <div class="modal-content">
+            <div class="success-icon">✓</div>
+            <h2>Transaction Successful!</h2>
+            <p id="successMessage"></p>
+            <button class="btn btn-load" style="width: 100%; margin-top: 20px;" onclick="closeModal('successModal')">OK</button>
+        </div>
+    </div>
+
+    <!-- Admin Modal -->
+    <div class="modal" id="adminModal">
+        <div class="admin-panel">
+            <h2>Admin Panel</h2>
+            <div class="stats">
+                <h3>Today's Statistics</h3>
+                <div class="stat-item">
+                    <span>Total Transactions:</span>
+                    <strong id="statTransactions">0</strong>
+                </div>
+                <div class="stat-item">
+                    <span>Total Revenue:</span>
+                    <strong id="statRevenue">₱0.00</strong>
+                </div>
+                <div class="stat-item">
+                    <span>Total Commission:</span>
+                    <strong id="statCommission">₱0.00</strong>
+                </div>
+            </div>
+            <button class="btn btn-load" style="width: 100%;" onclick="closeModal('adminModal')">Close</button>
+        </div>
+    </div>
+
+    <script>
+        let currentAmount = 0;
+        let transactions = [];
+        const COMMISSION_RATE = 0.03;
+        const MIN_LOAD = 20;
+
+        // Configure backend base URL (set to your public PHP host when deploying)
+        // Leave empty to use relative path on the same origin.
+        const BACKEND_BASE_URL = '';
+        function backendUrl(path) {
+            if (!BACKEND_BASE_URL) return path;
+            return BACKEND_BASE_URL.replace(/\/$/, '') + '/' + path.replace(/^\//, '');
+        }
+
+        // Load transactions from localStorage
+        function loadTransactions() {
+            const saved = localStorage.getItem('gcash_transactions');
+            if (saved) {
+                transactions = JSON.parse(saved);
+            }
+        }
+
+        // Save transactions to localStorage
+        function saveTransactions() {
+            localStorage.setItem('gcash_transactions', JSON.stringify(transactions));
+        }
+
+        // Initialize
+        loadTransactions();
+
+        // If returning from wallet, parse query parameters and reflect status
+        (function handleReturnStatus() {
+            try {
+                const params = new URLSearchParams(window.location.search);
+                const status = params.get('status') || params.get('resultStatus') || null;
+                const message = params.get('message') || params.get('resultMessage') || null;
+                const reqId = params.get('paymentRequestId') || params.get('requestId') || null;
+                if (status) {
+                    let uiMsg;
+                    switch (status) {
+                        case 'S': uiMsg = 'Payment Success'; break;
+                        case 'A': uiMsg = 'Payment Aborted'; break;
+                        case 'F': uiMsg = 'Payment Failed'; break;
+                        case 'U': uiMsg = 'Payment Unknown'; break;
+                        default: uiMsg = `Payment Status: ${status}`; break;
+                    }
+                    updateStatus(message ? `${uiMsg} — ${message}` : uiMsg);
+                }
+            } catch (e) {
+                // ignore parsing errors
+            }
+        })();
+
+        function insertBill(amount) {
+            currentAmount += amount;
+            updateDisplay();
+            updateStatus(`₱${amount} inserted | Total: ₱${currentAmount}`);
+            
+            // Simulate bill acceptance sound
+            playSound();
+        }
+
+        function updateDisplay() {
+            document.getElementById('amountDisplay').textContent = `₱${currentAmount.toFixed(2)}`;
+            validateForm();
+        }
+
+        function numpadClick(digit) {
+            const input = document.getElementById('mobileInput');
+            if (input.value.length < 11) {
+                input.value += digit;
+                validateForm();
+            }
+        }
+
+        function clearInput() {
+            document.getElementById('mobileInput').value = '';
+            validateForm();
+        }
+
+        function backspace() {
+            const input = document.getElementById('mobileInput');
+            input.value = input.value.slice(0, -1);
+            validateForm();
+        }
+
+        function validateForm() {
+            const mobile = document.getElementById('mobileInput').value;
+            const loadBtn = document.getElementById('loadBtn');
+            
+            if (mobile.length === 11 && mobile.startsWith('09') && currentAmount >= MIN_LOAD) {
+                loadBtn.disabled = false;
+            } else {
+                loadBtn.disabled = true;
+            }
+        }
+
+        function processTransaction() {
+            const mobile = document.getElementById('mobileInput').value;
+            
+            if (mobile.length !== 11 || !mobile.startsWith('09')) {
+                alert('Invalid mobile number!');
+                return;
+            }
+
+            if (currentAmount < MIN_LOAD) {
+                alert(`Minimum load is ₱${MIN_LOAD}`);
+                return;
+            }
+
+            const commission = currentAmount * COMMISSION_RATE;
+            const loadAmount = currentAmount - commission;
+
+
+// Show confirmation modal
+            document.getElementById('confirmMobile').textContent = mobile;
+            document.getElementById('confirmAmount').textContent = `₱${currentAmount.toFixed(2)}`;
+            document.getElementById('confirmCommission').textContent = `₱${commission.toFixed(2)}`;
+            document.getElementById('confirmLoad').textContent = `₱${loadAmount.toFixed(2)}`;
+            
+            openModal('confirmModal');
+        }
+
+        function confirmTransaction() {
+            closeModal('confirmModal');
+            openModal('processingModal');
+
+            const mobile = document.getElementById('mobileInput').value;
+            const commission = currentAmount * COMMISSION_RATE;
+            const loadAmount = currentAmount - commission;
+
+            initiateGCashPayment(mobile, loadAmount)
+                .then((data) => {
+                    // Handle redirect flow
+                    if (data && data.ok && data.resultStatus === 'A' && data.redirectUrl) {
+                        // Redirect to cashier page to complete payment
+                        window.location.href = data.redirectUrl;
+                        return;
+                    }
+
+                    // Handle success
+                    if (data && data.ok && data.resultStatus === 'S') {
+                        const transaction = {
+                            timestamp: new Date().toISOString(),
+                            mobile: mobile,
+                            amountInserted: currentAmount,
+                            loadAmount: loadAmount,
+                            commission: commission,
+                            paymentId: data.paymentId || null,
+                        };
+                        transactions.push(transaction);
+                        saveTransactions();
+
+                        closeModal('processingModal');
+                        document.getElementById('successMessage').textContent = 
+                            `₱${loadAmount.toFixed(2)} loaded to ${mobile}`;
+                        openModal('successModal');
+
+                        setTimeout(() => {
+                            resetTransaction();
+                        }, 2000);
+                        return;
+                    }
+
+                    // Handle failure/unknown
+                    closeModal('processingModal');
+                    const msg = (data && data.result && data.result.resultMessage) || (data && data.error) || 'Payment failed or unknown status';
+                    alert(msg);
+                })
+                .catch((err) => {
+                    closeModal('processingModal');
+                    alert(`Error contacting payment service: ${err && err.message ? err.message : err}`);
+                });
+        }
+
+        function cancelTransaction() {
+            if (currentAmount > 0) {
+                if (confirm(`Return ₱${currentAmount.toFixed(2)}?`)) {
+                    updateStatus(`Returning ₱${currentAmount.toFixed(2)}...`);
+                    setTimeout(() => {
+                        resetTransaction();
+                    }, 1000);
+                }
+            } else {
+                resetTransaction();
+            }
+        }
+
+        function resetTransaction() {
+            currentAmount = 0;
+            document.getElementById('mobileInput').value = '';
+            updateDisplay();
+            updateStatus('Insert bills to begin | Commission: 3%');
+        }
+
+        function updateStatus(message) {
+            document.getElementById('statusBar').textContent = message;
+        }
+
+        function openModal(id) {
+            document.getElementById(id).classList.add('active');
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.remove('active');
+        }
+
+        function openAdmin() {
+            // Calculate today's stats
+            const today = new Date().toDateString();
+            const todayTrans = transactions.filter(t => 
+                new Date(t.timestamp).toDateString() === today
+            );
+
+            const totalRevenue = todayTrans.reduce((sum, t) => sum + t.amountInserted, 0);
+            const totalCommission = todayTrans.reduce((sum, t) => sum + t.commission, 0);
+
+            document.getElementById('statTransactions').textContent = todayTrans.length;
+            document.getElementById('statRevenue').textContent = `₱${totalRevenue.toFixed(2)}`;
+            document.getElementById('statCommission').textContent = `₱${totalCommission.toFixed(2)}`;
+
+            openModal('adminModal');
+        }
+
+        function playSound() {
+            // Create a simple beep sound
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+
+
+oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.value = 800;
+            oscillator.type = 'sine';
+            
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.1);
+        }
+
+        async function initiateGCashPayment(mobile, loadAmount) {
+            const payload = {
+                mobile,
+                amount: Number(loadAmount.toFixed(2)),
+                title: `GCash Load for ${mobile}`,
+            };
+            const res = await fetch(backendUrl('gcash_pay.php'), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+            const data = await res.json().catch(() => null);
+            if (!res.ok) {
+                const errMsg = (data && data.error) ? data.error : `HTTP ${res.status}`;
+                throw new Error(errMsg);
+            }
+            return data;
+        }
+
+        // Allow typing in mobile input
+        document.getElementById('mobileInput').addEventListener('input', validateForm);
+
+        // Direct cash-in flow (e.g., Xendit backend). Set window.API_CASH_IN_URL
+        // to a full HTTPS URL if your backend is on a different origin.
+        async function processLoad() {
+            const mobile = document.getElementById('mobileInput').value;
+            const amountInserted = currentAmount;
+            const loadBtn = document.getElementById('loadBtn');
+
+            if (amountInserted <= 0) {
+                alert('Please insert bills first.');
+                return;
+            }
+
+            if (mobile.length !== 11 || !mobile.startsWith('09')) {
+                alert('Invalid mobile number!');
+                return;
+            }
+
+            const apiUrl = (window.API_CASH_IN_URL && String(window.API_CASH_IN_URL).trim()) || backendUrl('api/cash-in');
+            try {
+                if (loadBtn) loadBtn.disabled = true;
+                updateStatus('Sending load via backend...');
+
+                const res = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userMobileNumber: mobile, amount: amountInserted })
+                });
+                const result = await res.json().catch(() => null);
+
+                if (!res.ok) {
+                    const msg = (result && (result.error || result.message)) || `HTTP ${res.status}`;
+                    throw new Error(msg);
+                }
+
+                if (result && result.success) {
+                    alert('Load Sent Successfully!');
+                    resetTransaction();
+                } else {
+                    const msg = (result && (result.error || result.message)) || 'Transfer failed';
+                    alert('Error: ' + msg);
+                }
+            } catch (err) {
+                alert(`Error contacting backend: ${err && err.message ? err.message : err}`);
+            } finally {
+                // Re-validate to restore button state based on current inputs
+                validateForm();
+                if (loadBtn) {
+                    const mobileOk = mobile.length === 11 && mobile.startsWith('09');
+                    loadBtn.disabled = !(mobileOk && currentAmount >= MIN_LOAD);
+                }
+            }
+        }
+
+        // Hardware integration via Web Serial API
+        const serialState = { port: null, reader: null, buffer: '' };
+
+        async function connectToArduino() {
+            if (!('serial' in navigator)) {
+                alert('Web Serial not supported. Please use Chrome or Edge.');
+                return;
+            }
+            try {
+                const port = await navigator.serial.requestPort();
+                await port.open({ baudRate: 9600 });
+
+                const connectBtn = document.getElementById('connectButton');
+                if (connectBtn) connectBtn.disabled = true;
+
+                const decoder = new TextDecoderStream();
+                await port.readable.pipeTo(decoder.writable);
+                const inputStream = decoder.readable;
+                const reader = inputStream.getReader();
+
+                serialState.port = port;
+                serialState.reader = reader;
+                serialState.buffer = '';
+
+                const hwLabel = document.getElementById('hwStatus');
+                if (hwLabel) hwLabel.textContent = 'Connected';
+                readSerialLoop();
+                alert('Connected to Machine Hardware!');
+            } catch (err) {
+                console.error('Connection failed', err);
+                if (err && (err.name === 'NotFoundError' || /No port selected/i.test(err.message || ''))) {
+                    alert('No port selected. Please pick your Arduino from the list.');
+                } else {
+                    alert('Connection failed. Did you select a port?');
+                }
+            }
+        }
+
+        async function readSerialLoop() {
+            const reader = serialState.reader;
+            if (!reader) return;
+            try {
+                while (true) {
+                    const { value, done } = await reader.read();
+                    if (done) {
+                        reader.releaseLock();
+                        const hwLabel = document.getElementById('hwStatus');
+                        if (hwLabel) hwLabel.textContent = 'Disconnected';
+                        const connectBtn = document.getElementById('connectButton');
+                        if (connectBtn) connectBtn.disabled = false;
+                        try { if (serialState.port) await serialState.port.close(); } catch (_) {}
+                        break;
+                    }
+                    if (value) {
+                        serialState.buffer += value;
+                        let idx;
+                        while ((idx = serialState.buffer.indexOf('\n')) >= 0) {
+                            const line = serialState.buffer.slice(0, idx).trim();
+                            serialState.buffer = serialState.buffer.slice(idx + 1);
+                            if (!line) continue;
+                            try {
+                                const data = JSON.parse(line);
+                                if (data && data.type === 'CREDIT' && Number.isFinite(Number(data.amount))) {
+                                    updateCreditDisplay(Number(data.amount));
+                                }
+                            } catch (_) {
+                                // ignore non-JSON lines
+                            }
+                        }
+                    }
+                }
+            } catch (e) {
+                console.error('Serial read error', e);
+            }
+        }
+
+        function updateCreditDisplay(addAmount) {
+            const amt = Number(addAmount) || 0;
+            currentAmount += amt;
+            updateDisplay();
+            updateStatus(`₱${amt.toFixed(2)} inserted | Total: ₱${currentAmount.toFixed(2)}`);
+            playSound();
+        }
+    </script>
+</body>
+</html>
+
+// Optional: handle physical unplug events
+if ('serial' in navigator && navigator.serial.addEventListener) {
+    navigator.serial.addEventListener('disconnect', () => {
+        const hwLabel = document.getElementById('hwStatus');
+        if (hwLabel) hwLabel.textContent = 'Disconnected';
+        const connectBtn = document.getElementById('connectButton');
+        if (connectBtn) connectBtn.disabled = false;
+    });
+}

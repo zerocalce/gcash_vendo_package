@@ -1,0 +1,10 @@
+Wiring (simplified)
+- ESP32 (or Arduino with USB serial) connected to:
+  - Motor driver (for stacker solenoid) -> GPIO with transistor/MOSFET
+  - IR break-beam sensor -> digital input (detect bill arrival)
+  - Camera module (if using ESP32-CAM) -> dedicated connector
+  - UV LED driver -> power + GPIO control (use current-limited driver)
+  - Magnetic sensor (e.g., HMC5883L) -> I2C (SDA/SCL)
+  - Serial TX/RX -> Backend host (USB-Serial) OR use WiFi to send events to backend
+
+NOTE: This diagram is intentionally high-level. Use proper level-shifting, current drivers, and isolation for LEDs and motors. Ensure safety interlocks and fuses.

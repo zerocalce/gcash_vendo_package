@@ -1,0 +1,34 @@
+flowchart LR
+  subgraph Host[Backend Host]
+    direction TB
+    API[Express API]
+    WS[WebSocket Server]
+    SER[Serial Manager]
+  end
+
+  subgraph Edge[ESP32 Node]
+    direction TB
+    MCU[ESP32]
+    CAM[Camera / Sensor]
+    IR[IR Break-beam]
+    UV[UV LED Driver]
+    MAG[Mag Sensor I2C]
+    MOT[Motor Driver]
+  end
+
+  UI[Frontend UI] -->|HTTP/WS| API
+  API --> WS
+  API --> SER
+
+  SER <--> |USB Serial| MCU
+
+  MCU --> IR
+  MCU --> CAM
+  MCU --> UV
+  MCU --> MAG
+  MCU --> MOT
+
+  classDef host fill:#1c2541,stroke:#3a506b,color:#eaeaea
+  classDef edge fill:#243b55,stroke:#5bc0be,color:#eaeaea
+  class Host host
+  class Edge edge

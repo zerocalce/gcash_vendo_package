@@ -1,0 +1,40 @@
+[package]
+name = "gcash-vendo-machine"
+version = "0.1.0"
+description = "GCash Vendo Machine - Backend with AI bill classification"
+authors = ["Your Name <your.email@example.com>"]
+license = "MIT"
+
+[[bin]]
+name = "gcash-vendo"
+module_path = "backend/server.js"
+
+[dependencies]
+node = "20"
+
+[environment]
+PORT = "8080"
+NODE_ENV = "production"
+
+[[mount]]
+source = "backend"
+target = "/app"
+
+[[mount]]
+source = "backend/data"
+target = "/app/data"
+
+[[mount]]
+source = "backend/public"
+target = "/app/public"
+
+[[network]]
+name = "web"
+domain = "gcash-vendo.wasmer.app"
+http_port = 8080
+
+[build]
+command = "cd backend && npm install --production"
+
+[run]
+command = "cd backend && npm start"

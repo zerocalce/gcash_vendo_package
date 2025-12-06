@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hybrid Bill Classification Demo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+        }
+        .status-online { background-color: #10b981; }
+        .status-offline { background-color: #ef4444; }
+        .status-warning { background-color: #f59e0b; }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-3xl font-bold text-gray-800 mb-8">Hybrid Bill Classification System</h1>
+        
+        <!-- Status Panel -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h2 class="text-xl font-semibold mb-4">System Status</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    <span class="status-indicator" id="connection-status"></span>
+                    <span class="font-medium">Connection:</span>
+                    <span id="connection-text">Offline</span>
+                </div>
+                <div>
+                    <span class="font-medium">Mode:</span>
+                    <span id="current-mode" class="ml-2 px-2 py-1 bg-blue-100 rounded">Hybrid</span>
+                </div>
+                <div>
+                    <span class="font-medium">Gemini Threshold:</span>
+                    <span id="threshold-value" class="ml-2">0.7</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Control Panel -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h2 class="text-xl font-semibold mb-4">Controls</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium mb-2">Classification Mode</label>
+                    <select id="mode-select" class="w-full px-3 py-2 border rounded-md">
+                        <option value="hybrid">Hybrid (Gemini + TFLite)</option>
+                        <option value="gemini">Gemini Only</option>
+                        <option value="tflite">TFLite Only</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-2">Gemini Confidence Threshold</label>
+                    <input type="range" id="threshold-slider" min="0" max="1" step="0.1" value="0.7" 
+                           class="w-full" oninput="updateThreshold(this.value)">
+                    <div class="text-center mt-1">
+                        <span id="threshold-display">0.7</span>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-4 flex gap-2">
+                <button onclick="classifyBill()" 
+                        class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+                    Classify Bill
+                </button>
+                <button onclick="resetState()" 
+                        class="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700">
+                    Reset State
+                </button>
+                <button onclick="testVend()" 
+                        class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">
+                    Test Vend
+                </button>
+            </div>
+        </div>
+
+        <!-- Results Panel -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h2 class="text-xl font-semibold mb-4">Classification Results</h2>
+            <div id="results-container" class="space-y-2">
+                <p class="text-gray-500">No classifications yet...</p>
+            </div>
+        </div>
+
+        <!-- Activity Log -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h2 class="text-xl font-semibold mb-4">Activity Log</h2>
+            <div id="log-container" class="h-48 overflow-y-auto bg-gray-50 p-3 rounded text-sm font-mono">
+                <div class="text-gray-500">System initializing...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // WebSocket connection
+        let ws;
+        let systemState = {
+            mode: 'hybrid',
+            threshold: 0.7,
+            connected: false,
+            lastResults: []
+        };
+
+        function initWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}`;
+            
+            ws = new WebSocket(wsUrl);
+            
+            ws.onopen = () => {
+                updateConnectionStatus(true);
+                addLog('WebSocket connected');
+            };
+            
+            ws.onclose = () => {
+                updateConnectionStatus(false);
+                addLog('WebSocket disconnected');
+                // Attempt to reconnect after 3 seconds
+                setTimeout(initWebSocket, 3000);
+            };
+            
+            ws.onerror = (error) => {
+                addLog('WebSocket error: ' + error);
+            };
+            
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                handleWebSocketMessage(data);
+            };
+        }
+
+        function handleWebSocketMessage(data) {
+            if (data.type === 'bill.detected') {
+                handleBillDetected(data.data);
+            }
+        }
+
+        function handleBillDetected(data) {
+            const { denomination, confidence, source } = data;
+            
+            addResult({
+                denomination,
+                confidence,
+                source,
+                timestamp: new Date().toLocaleTimeString()
+            });
+            
+            addLog(`Bill detected: ${denomination} pesos (${(confidence * 100).toFixed(1)}%) via ${source}`);
+        }
+
+        function updateConnectionStatus(connected) {
+            systemState.connected = connected;
+            const indicator = document.getElementById('connection-status');
+            const text = document.getElementById('connection-text');
+            
+            if (connected) {
+                indicator.className = 'status-indicator status-online';
+                text.textContent = 'Connected';
+            } else {
+                indicator.className = 'status-indicator status-offline';
+                text.textContent = 'Offline';
+            }
+        }
+
+        function updateThreshold(value) {
+            document.getElementById('threshold-display').textContent = value;
+            document.getElementById('threshold-value').textContent = value;
+        }
+
+        async function classifyBill() {
+            try {
+                addLog('Starting classification...');
+                
+                const response = await fetch('/api/hybrid/classify?emit=1', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.ok) {
+                    const result = data.result;
+                    addResult({
+                        denomination: result.denomination,
+                        confidence: result.confidence,
+                        source: result.source,
+                        timestamp: new Date().toLocaleTimeString(),
+                        processingTime: result.processingTime
+                    });
+                    
+                    addLog(`Classification: ${result.denomination} pesos (${(result.confidence * 100).toFixed(1)}%) via ${result.source} (${result.processingTime}ms)`);
+                } else {
+                    addLog('Classification failed: ' + data.error);
+                }
+            } catch (error) {
+                addLog('Classification error: ' + error.message);
+            }
+        }
+
+        function addResult(result) {
+            systemState.lastResults.unshift(result);
+            if (systemState.lastResults.length > 10) {
+                systemState.lastResults = systemState.lastResults.slice(0, 10);
+            }
+            
+            updateResultsDisplay();
+        }
+
+        function updateResultsDisplay() {
+            const container = document.getElementById('results-container');
+            
+            if (systemState.lastResults.length === 0) {
+                container.innerHTML = '<p class="text-gray-500">No classifications yet...</p>';
+                return;
+            }
+            
+            container.innerHTML = systemState.lastResults.map(result => `
+                <div class="flex justify-between items-center p-3 bg-gray-50 rounded">
+                    <div>
+                        <span class="font-semibold">${result.denomination} pesos</span>
+                        <span class="ml-2 text-sm text-gray-600">${result.source}</span>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-sm font-medium">${(result.confidence * 100).toFixed(1)}%</div>
+                        <div class="text-xs text-gray-500">${result.timestamp}</div>
+                        ${result.processingTime ? `<div class="text-xs text-gray-500">${result.processingTime}ms</div>` : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function changeMode(mode) {
+            try {
+                const response = await fetch('/api/hybrid/mode', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ mode })
+                });
+                
+                if (response.ok) {
+                    systemState.mode = mode;
+                    document.getElementById('current-mode').textContent = mode.charAt(0).toUpperCase() + mode.slice(1);
+                    addLog(`Mode changed to: ${mode}`);
+                }
+            } catch (error) {
+                addLog('Mode change error: ' + error.message);
+            }
+        }
+
+        async function setThreshold(threshold) {
+            try {
+                const response = await fetch('/api/hybrid/threshold', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ threshold })
+                });
+                
+                if (response.ok) {
+                    systemState.threshold = threshold;
+                    addLog(`Threshold set to: ${threshold}`);
+                }
+            } catch (error) {
+                addLog('Threshold error: ' + error.message);
+            }
+        }
+
+        async function resetState() {
+            try {
+                const response = await fetch('/api/hybrid/reset', {
+                    method: 'POST'
+                });
+                
+                if (response.ok) {
+                    systemState.lastResults = [];
+                    updateResultsDisplay();
+                    addLog('State reset');
+                }
+            } catch (error) {
+                addLog('Reset error: ' + error.message);
+            }
+        }
+
+        async function testVend() {
+            addLog('Testing vend command...');
+            // This would trigger the vend motor
+            addLog('Vend test completed');
+        }
+
+        function addLog(message) {
+            const container = document.getElementById('log-container');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.textContent = `[${timestamp}] ${message}`;
+            container.appendChild(logEntry);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        // Event listeners
+        document.getElementById('mode-select').addEventListener('change', (e) => {
+            changeMode(e.target.value);
+        });
+
+        document.getElementById('threshold-slider').addEventListener('change', (e) => {
+            setThreshold(parseFloat(e.target.value));
+        });
+
+        // Initialize
+        initWebSocket();
+        addLog('Hybrid classification demo initialized');
+    </script>
+</body>
+</html>

@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>GCash Vendo — API Test UI</title>
+  <style>
+    :root{--bg:#0b132b;--card:#1c2541;--muted:#3a506b;--accent:#5bc0be;--text:#eaeaea;--danger:#ef4444;--ok:#22c55e}
+    *{box-sizing:border-box;font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+    body{margin:0;background:var(--bg);color:var(--text)}
+    header{padding:16px;border-bottom:1px solid var(--muted);display:flex;gap:12px;align-items:center}
+    header h1{font-size:18px;margin:0}
+    main{display:grid;grid-template-columns:1fr 1fr;gap:16px;padding:16px}
+    .card{background:var(--card);border:1px solid var(--muted);border-radius:10px;overflow:hidden}
+    .card h2{margin:0;padding:12px 14px;border-bottom:1px solid var(--muted);font-size:14px;color:#cbd5e1}
+    .section{padding:12px 14px;display:grid;gap:10px}
+    label{font-size:12px;color:#cbd5e1}
+    select,input,textarea,button{background:#0f172a;color:var(--text);border:1px solid var(--muted);border-radius:8px;padding:10px;font-size:14px}
+    textarea{min-height:180px;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace}
+    .row{display:flex;gap:10px;align-items:center}
+    .row > *{flex:1}
+    .status{display:inline-flex;align-items:center;gap:8px;font-size:12px}
+    .dot{width:10px;height:10px;border-radius:999px;background:var(--muted)}
+    .dot.sending{background:#f59e0b}
+    .dot.ok{background:var(--ok)}
+    .dot.err{background:var(--danger)}
+    pre{margin:0;white-space:pre-wrap;word-break:break-word}
+    footer{padding:12px 14px;border-top:1px solid var(--muted);font-size:12px;color:#9aa7b0}
+    .hint{font-size:12px;color:#9aa7b0}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>GCash Vendo — API Test UI</h1>
+    <div class="status"><span id="statusDot" class="dot"></span><span id="statusText">Idle</span></div>
+  </header>
+
+  <main>
+    <section class="card">
+      <h2>Request</h2>
+      <div class="section">
+        <div class="row">
+          <label>
+            Endpoint
+            <select id="endpoint">
+              <option value="/api/bills/detected|POST">POST /api/bills/detected</option>
+              <option value="/api/payments/create|POST">POST /api/payments/create</option>
+              <option value="/api/webhook/xendit|POST">POST /api/webhook/xendit</option>
+            </select>
+          </label>
+          <label>
+            x-callback-token (header)
+            <input id="headerToken" placeholder="Optional; required for webhook" />
+          </label>
+        </div>
+        <label>
+          JSON Body
+          <textarea id="body"></textarea>
+        </label>
+        <div class="row">
+          <button id="send">Send</button>
+          <button id="reset">Reset Body</button>
+        </div>
+        <div class="hint" id="hint"></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Response</h2>
+      <div class="section">
+        <div class="row">
+          <label>
+            HTTP Status
+            <input id="respStatus" readonly />
+          </label>
+          <label>
+            Duration (ms)
+            <input id="respTime" readonly />
+          </label>
+        </div>
+        <label>
+          Output
+          <textarea id="respText" readonly></textarea>
+        </label>
+      </div>
+    </section>
+  </main>
+
+  <footer>Static UI served by backend/public. Use this to validate endpoints locally.</footer>
+
+  <script>
+    // Helpers
+    const statusDot = document.getElementById('statusDot');
+    const statusText = document.getElementById('statusText');
+    function setStatus(kind, text){
+      statusDot.className = 'dot ' + (kind||'');
+      statusText.textContent = text || 'Idle';
+    }
+
+    const endpointSel = document.getElementById('endpoint');
+    const bodyEl = document.getElementById('body');
+    const hintEl = document.getElementById('hint');
+
+    const templates = {
+      '/api/bills/detected|POST': {
+        body: { denomination: 100, confidence: 0.95, sensorId: 'S1', metadata: { note: 'test' } },
+        hint: 'Simulate a bill detection event. No external keys required.'
+      },
+      '/api/payments/create|POST': {
+        body: { amount: 100, sessionId: 'SESSION_1', mobileNumber: '' },
+        hint: 'Creates a GCash charge via Xendit. Requires XENDIT_SECRET_KEY in backend.'
+      },
+      '/api/webhook/xendit|POST': {
+        body: { data: { reference_id: 'CASHIN_123', status: 'SUCCEEDED' } },
+        hint: 'Validates header x-callback-token; updates transaction status.'
+      }
+    };
+
+    function loadTemplate(){
+      const key = endpointSel.value;
+      const t = templates[key];
+      bodyEl.value = JSON.stringify(t.body, null, 2);
+      hintEl.textContent = t.hint;
+    }
+
+    endpointSel.addEventListener('change', loadTemplate);
+    document.getElementById('reset').addEventListener('click', loadTemplate);
+
+    async function send(){
+      const [path, method] = endpointSel.value.split('|');
+      const headers = { 'Content-Type': 'application/json' };
+      const token = document.getElementById('headerToken').value.trim();
+      if (token) headers['x-callback-token'] = token;
+
+      let payload;
+      try {
+        payload = bodyEl.value ? JSON.parse(bodyEl.value) : {};
+      } catch(e){
+        alert('Invalid JSON body');
+        return;
+      }
+
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 15000);
+
+      setStatus('sending', 'Sending...');
+      const t0 = performance.now();
+      let status = 0; let text = '';
+      try {
+        const resp = await fetch(path, {
+          method,
+          headers,
+          body: JSON.stringify(payload),
+          signal: controller.signal
+        });
+        status = resp.status;
+        const ct = resp.headers.get('content-type') || '';
+        if (ct.includes('application/json')) {
+          const j = await resp.json();
+          text = JSON.stringify(j, null, 2);
+        } else {
+          text = await resp.text();
+        }
+        setStatus('ok', 'Done');
+      } catch (e){
+        status = 0;
+        text = 'Request failed: ' + (e && e.message ? e.message : e);
+        setStatus('err', 'Failed');
+      } finally {
+        clearTimeout(timeout);
+        const t1 = performance.now();
+        document.getElementById('respStatus').value = String(status);
+        document.getElementById('respTime').value = Math.round(t1 - t0);
+        document.getElementById('respText').value = text;
+      }
+    }
+
+    document.getElementById('send').addEventListener('click', send);
+    // Initialize
+    loadTemplate();
+  </script>
+</body>
+</html>

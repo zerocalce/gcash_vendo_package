@@ -1,0 +1,16 @@
+sequenceDiagram
+    participant User
+    participant Frontend
+    participant Backend
+    participant Arduino
+    participant Xendit
+    User->>Frontend: Insert bill / enter mobile
+    Frontend->>Backend: createPayment(amount, mobile)
+    Backend->>Arduino: WAIT_FOR_BILLS
+    Arduino->>Backend: BILL:100:0.97
+    Backend->>Frontend: update amount
+    Backend->>Xendit: create charge (GCash)
+    Xendit-->>Backend: webhook (SUCCEEDED)
+    Backend->>Arduino: VEND:1
+    Arduino-->>Backend: ACK:VEND
+    Backend->>Frontend: show success
