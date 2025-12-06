@@ -30,7 +30,7 @@ target = "/app/public"
 
 [[network]]
 name = "web"
-domain = "gcash-vendo.wasmer.app"
+domain = "gcash-vendo-package.wasmer.app"
 http_port = 8080
 
 [build]
